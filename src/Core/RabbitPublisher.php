@@ -6,14 +6,46 @@ use PhpAmqpLib\Message\AMQPMessage;
 
 class RabbitPublisher
 {
-    public function __construct(private RabbitMQConnection $connection) {}
+    private RabbitMQConnection $connection;
 
-    public function publish(string $queue, array $message): void
+    public function __construct()
     {
-        $ch = $this->connection->getChannel();
-        $ch->queue_declare($queue, false, true, false, false);
-        $ch->basic_publish(new AMQPMessage(json_encode($message)), '', $queue);
+        EnvLoader::load(dirname(__DIR__, 2));
 
-        echo "✅ Message sent to queue: {$queue}\n";
+        $this->connection = new RabbitMQConnection();
+        $this->connection->connect();
+    }
+
+    /**
+     * Queue ga xabar yuborish
+     */
+    public function publish(string $queue, array $data): void
+    {
+        $channel = $this->connection->getChannel();
+
+        // Queue mavjud bo‘lmasa — yaratish
+        $channel->queue_declare(
+            $queue,
+            false,  // passive
+            true,   // durable
+            false,  // exclusive
+            false   // auto_delete
+        );
+
+        // JSON xabar tayyorlash
+        $payload = json_encode($data, JSON_UNESCAPED_UNICODE);
+        $message = new AMQPMessage(
+            $payload,
+            ['content_type' => 'application/json', 'delivery_mode' => 2]
+        );
+
+        // Queue ga yuborish
+        $channel->basic_publish($message, '', $queue);
+
+        echo "✅ Message published to queue: {$queue}\n";
+
+        // Kanalni yopish
+        $channel->close();
+        $this->connection->close();
     }
 }
