@@ -1,26 +1,39 @@
 {
   "name": "muxtorov98/rabbitmq-universal",
   "description": "Universal RabbitMQ Queue Worker for PHP frameworks (Laravel, Symfony, Yii2)",
+  "keywords": ["rabbitmq", "queue", "laravel", "symfony", "yii2", "amqp", "worker", "publisher"],
   "type": "library",
   "license": "MIT",
+
   "require": {
     "php": ">=8.0",
     "php-amqplib/php-amqplib": "^3.7",
     "vlucas/phpdotenv": "^5.5",
-    "illuminate/support": "^9.0|^10.0|^11.0",
-    "symfony/console": "^6.0|^7.0",
+    "illuminate/support": "^8.0|^9.0|^10.0|^11.0",
+    "symfony/console": "^5.0|^6.0|^7.0",
     "yiisoft/yii2": "^2.0"
   },
+
   "autoload": {
     "psr-4": {
       "RabbitMQQueue\\": "src/"
     }
   },
+
+  "autoload-dev": {
+    "psr-4": {
+      "RabbitMQQueue\\Tests\\": "tests/"
+    }
+  },
+
   "extra": {
     "laravel": {
       "providers": [
         "RabbitMQQueue\\Frameworks\\Laravel\\RabbitMQServiceProvider"
       ]
     }
-  }
+  },
+
+  "minimum-stability": "stable",
+  "prefer-stable": true
 }
