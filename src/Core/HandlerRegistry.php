@@ -2,60 +2,69 @@
 
 namespace RabbitMQQueue\Core;
 
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use ReflectionClass;
 
 class HandlerRegistry
 {
-    /** @var QueueHandlerInterface[] */
     private array $handlers = [];
 
-    public function __construct(string $handlersPath)
+    public function __construct(string $path)
     {
-        foreach ($this->discoverHandlers($handlersPath) as $handler) {
-            $ref = new ReflectionClass($handler);
-            $attrs = $ref->getAttributes(QueueChannel::class);
-
-            if ($attrs) {
-                $queueName = $attrs[0]->newInstance()->queueName;
-                $this->handlers[$queueName] = $handler;
-            }
-        }
+        $this->discoverHandlers($path);
     }
 
-    private function discoverHandlers(string $dir): array
+    private function discoverHandlers(string $path): void
     {
-        $found = [];
+        // Path aliaslarni aniqlaymiz
+        if (class_exists('\Yii') && str_starts_with($path, '@')) {
+            $path = \Yii::getAlias($path);
+        }
 
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS)
-        );
+        $realPath = realpath($path);
+        if (!$realPath || !is_dir($realPath)) {
+            throw new \RuntimeException("❌ Handler path topilmadi: {$path}");
+        }
+
+        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($realPath));
 
         foreach ($iterator as $file) {
-            if (str_ends_with($file->getFilename(), 'Handler.php')) {
-                $content = file_get_contents($file);
-                preg_match('/namespace\s+([^;]+);/', $content, $ns);
-                preg_match('/class\s+(\w+)/', $content, $class);
+            if ($file->isDir() || $file->getExtension() !== 'php') continue;
 
-                if (!empty($class[1])) {
-                    $fullClass = trim(($ns[1] ?? '') . '\\' . $class[1], '\\');
-                    if (class_exists($fullClass) &&
-                        is_subclass_of($fullClass, QueueHandlerInterface::class)) {
-                        $found[] = new $fullClass();
+            $content = file_get_contents($file->getRealPath());
+            if (preg_match('/namespace\s+([a-zA-Z0-9_\\\\]+)/', $content, $namespaceMatch) &&
+                preg_match('/class\s+([a-zA-Z0-9_]+)/', $content, $classMatch)) {
+
+                $className = $namespaceMatch[1] . '\\' . $classMatch[1];
+
+                if (!class_exists($className)) {
+                    require_once $file->getRealPath();
+                }
+
+                if (class_exists($className)) {
+                    $reflection = new ReflectionClass($className);
+                    if ($reflection->implementsInterface(QueueHandlerInterface::class)) {
+                        $attrs = $reflection->getAttributes(QueueChannel::class);
+                        if ($attrs) {
+                            $queue = $attrs[0]->newInstance()->queue;
+                            $this->handlers[$queue] = [
+                                'class' => $className,
+                                'dependencies' => [] // constructor paramlar uchun kelajakda kengaytiriladi
+                            ];
+                        }
                     }
                 }
             }
         }
 
-        return $found;
+        if (empty($this->handlers)) {
+            echo "⚠️  Handler topilmadi ({$path})\n";
+        }
     }
 
-    public function getHandler(string $queue): ?QueueHandlerInterface
+    public function getHandlers(): array
     {
-        return $this->handlers[$queue] ?? null;
-    }
-
-    public function getQueueList(): array
-    {
-        return array_keys($this->handlers);
+        return $this->handlers;
     }
 }
