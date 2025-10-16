@@ -12,12 +12,9 @@ class WorkerController extends Controller
     {
         $this->stdout("🚀 Loading environment...\n");
 
-        // 🔧 Root path avtomatik aniqlanadi (.env joylashgan katalog)
-        // Yii2 Advanced uchun: /yii2-app-advanced/
-        // Yii2 Basic uchun: /yii2-basic/
+        // 🔧 Root path (.env joylashgan katalog)
         $rootPath = dirname(Yii::getAlias('@app'), 2);
         if (!file_exists($rootPath . '/.env')) {
-            // Agar .env fayl console papkada bo‘lsa
             $rootPath = Yii::getAlias('@app');
         }
 
@@ -28,12 +25,25 @@ class WorkerController extends Controller
         $connection->connect();
 
         // 🔍 Handler path aniqlash
-        $handlerPath = $_ENV['HANDLER_PATH'] ?? '@app/handlers';
-        $resolvedPath = Yii::getAlias($handlerPath, false) ?: $handlerPath;
+        $handlerPath = $_ENV['HANDLER_PATH'] ?? '@console/Handlers';
 
+        // 1️⃣ Yii aliasni sinaymiz
+        $resolvedPath = Yii::getAlias($handlerPath, false);
+
+        // 2️⃣ Agar alias topilmasa, relative pathni absolute qilib olamiz
+        if (!$resolvedPath) {
+            $resolvedPath = $rootPath . DIRECTORY_SEPARATOR . ltrim($handlerPath, '/');
+        }
+
+        // 3️⃣ Agar papka mavjud bo‘lmasa, avtomatik yaratamiz
+        if (!is_dir($resolvedPath)) {
+            @mkdir($resolvedPath, 0777, true);
+            $this->stdout("⚠️  Handler papkasi topilmadi, yaratildi: {$resolvedPath}\n");
+        }
+
+        // 🔁 Registry va Worker
         $registry = new HandlerRegistry($resolvedPath);
 
-        // 👷 Worker ishga tushadi
         $this->stdout("👷 Worker started and listening for messages...\n");
         (new Worker($connection, $registry))->start();
     }
