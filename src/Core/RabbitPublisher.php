@@ -7,41 +7,45 @@ use PhpAmqpLib\Message\AMQPMessage;
 class RabbitPublisher
 {
     private RabbitMQConnection $connection;
-    private int $maxRetries = 3;
-    private int $retryDelay = 3;
 
-    public function __construct(?RabbitMQConnection $connection = null)
+    public function __construct()
     {
-        $this->connection = $connection ?? new RabbitMQConnection();
-        if (!$connection) $this->connection->connect();
+        EnvLoader::load(dirname(__DIR__, 2));
+
+        $this->connection = new RabbitMQConnection();
+        $this->connection->connect();
     }
 
+    /**
+     * Queue ga xabar yuborish
+     */
     public function publish(string $queue, array $data): void
     {
-        $attempt = 0;
         $channel = $this->connection->getChannel();
 
-        while ($attempt < $this->maxRetries) {
-            try {
-                $channel->queue_declare($queue, false, true, false, false);
-                $message = new AMQPMessage(json_encode($data, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), [
-                    'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT
-                ]);
+        // Queue mavjud bo‘lmasa — yaratish
+        $channel->queue_declare(
+            $queue,
+            false,  // passive
+            true,   // durable
+            false,  // exclusive
+            false   // auto_delete
+        );
 
-                $channel->confirm_select(); // enables confirm mode
-                $channel->basic_publish($message, '', $queue);
-                $channel->wait_for_pending_acks_returns();
+        // JSON xabar tayyorlash
+        $payload = json_encode($data, JSON_UNESCAPED_UNICODE);
+        $message = new AMQPMessage(
+            $payload,
+            ['content_type' => 'application/json', 'delivery_mode' => 2]
+        );
 
-                echo "📤 Sent to [{$queue}]: " . json_encode($data, JSON_UNESCAPED_UNICODE) . "\n";
-                return;
-            } catch (\Throwable $e) {
-                $attempt++;
-                echo "⚠️  Publish attempt {$attempt}/{$this->maxRetries} failed: {$e->getMessage()}\n";
-                sleep($this->retryDelay);
-                if ($attempt >= $this->maxRetries) {
-                    file_put_contents('/var/log/rabbit_publisher_error.log', date('Y-m-d H:i:s') . ' ' . $e->getMessage() . "\n", FILE_APPEND);
-                }
-            }
-        }
+        // Queue ga yuborish
+        $channel->basic_publish($message, '', $queue);
+
+        echo "✅ Message published to queue: {$queue}\n";
+
+        // Kanalni yopish
+        $channel->close();
+        $this->connection->close();
     }
 }
