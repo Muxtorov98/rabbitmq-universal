@@ -66,13 +66,6 @@ class EmailHandler implements QueueHandlerInterface
     public function handle(array $message): void
     {
         echo "📩 Email received: " . json_encode($message, JSON_UNESCAPED_UNICODE) . PHP_EOL;
-
-        // Test uchun javobni boshqa queue'ga yuborish
-        $publisher = new RabbitPublisher();
-        $publisher->publish('log_queue', [
-            'status' => 'processed',
-            'to' => $message['to'] ?? 'unknown',
-        ]);
     }
 }
 ```
@@ -143,4 +136,122 @@ php bin/console rabbit:worker:start
 
 ```bash
 php yii worker/start
+```
+# laravel
+
+- app/Console/Commands/RabbitPublishCommand.php
+
+```php
+<?php
+
+namespace App\Console\Commands;
+
+use Illuminate\Console\Command;
+use RabbitMQQueue\Core\RabbitPublisher;
+
+class RabbitPublishCommand extends Command
+{
+    protected $signature = 'rabbit:publish {queue} {--data=}';
+    protected $description = 'Publish a message to RabbitMQ queue (from Laravel)';
+
+    public function handle()
+    {
+        $queue = $this->argument('queue');
+        $data = $this->option('data')
+            ? json_decode($this->option('data'), true)
+            : ['text'=>'Salom from Laravel'];
+
+        $publisher = new RabbitPublisher();
+        $publisher->publish($queue, $data);
+
+        $this->info("📩 Message published to queue '{$queue}' from Laravel: " . json_encode($data, JSON_UNESCAPED_UNICODE));
+    }
+}
+```
+```bash
+  php artisan rabbit:publish log_queue --data='{"status":"processed","to":"user@example.com","text":"Salom from Laravel"}'
+```
+
+# symfony
+
+- src/Command/RabbitPublishCommand.php
+
+```php
+<?php
+
+namespace App\Command;
+
+use RabbitMQQueue\Core\RabbitPublisher;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+
+class RabbitPublishCommand extends Command
+{
+    protected static $defaultName = 'rabbit:publish';
+
+    protected function configure()
+    {
+        $this
+            ->setDescription('Publish a message to RabbitMQ queue (from Symfony)')
+            ->addArgument('queue', InputArgument::REQUIRED, 'Queue name')
+            ->addOption('data', null, InputOption::VALUE_OPTIONAL, 'JSON data string');
+    }
+
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        $queue = $input->getArgument('queue');
+        $data = $input->getOption('data')
+            ? json_decode($input->getOption('data'), true)
+            : ['text'=>'Salom from Symfony'];
+
+        $publisher = new RabbitPublisher();
+        $publisher->publish($queue, $data);
+
+        $output->writeln("📩 Message published to queue '{$queue}' from Symfony: " . json_encode($data, JSON_UNESCAPED_UNICODE));
+        return Command::SUCCESS;
+    }
+}
+
+```
+```bash
+php bin/console rabbit:publish notification_queue --data='{"event":"user_registered","user_id":12345,"text":"Salom from Symfony"}'
+```
+
+# yii 
+
+- console/controllers/RabbitPublishController.php
+
+```php
+<?php
+namespace console\controllers;
+
+use yii\console\Controller;
+use RabbitMQQueue\Core\RabbitPublisher;
+use yii\helpers\Json;
+
+class RabbitPublishController extends Controller
+{
+    public $data;
+
+    public function options($actionID)
+    {
+        return ['data'];
+    }
+
+    public function actionIndex($queue)
+    {
+        $data = $this->data ? Json::decode($this->data) : [];
+
+        $publisher = new RabbitPublisher();
+        $publisher->publish($queue, $data);
+
+        $this->stdout("Message published to queue '{$queue}' from Yii2\n");
+    }
+}
+```
+```bash
+php yii rabbit-publish email_queue --data='{"to":"user@example.com","subject":"Yii2 to Laravel"}'
 ```
