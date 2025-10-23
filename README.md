@@ -20,6 +20,8 @@ Laravel, Symfony va Yii2 loyihalarida **xabar yuborish (publish)** va **qabul qi
 
 ```bash
 composer require muxtorov98/rabbitmq-universal:v2.1.8 --ignore-platform-reqs --no-scripts
+
+docker compose exec php composer require muxtorov98/rabbitmq-universal:v2.1.8 --ignore-platform-reqs --no-scripts
 ```
 
 ---
@@ -99,6 +101,8 @@ Paket avtomatik tarzda `RabbitMQServiceProvider` ni yuklaydi, qo‘shimcha ro‘
 ### 🏃 2. Worker ishga tushirish
 ```bash
 php artisan rabbit:worker
+
+docker compose exec php php artisan rabbit:worker
 ```
 
 ---
