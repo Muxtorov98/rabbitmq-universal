@@ -38,7 +38,7 @@ RABBITMQ_PREFETCH=10
 RABBITMQ_SSL=false
 
 # Worker handler fayllar joylashgan joy
-HANDLER_PATH=app/Handlers
+HANDLER_PATH='app/Handlers'
 ```
 
 ---
