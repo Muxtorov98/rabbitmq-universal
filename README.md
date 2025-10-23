@@ -19,7 +19,7 @@ Laravel, Symfony va Yii2 loyihalarida **xabar yuborish (publish)** va **qabul qi
 ## 📦 O‘rnatish
 
 ```bash
-composer require muxtorov98/rabbitmq-universal:^3.0 --ignore-platform-reqs --no-scripts
+composer require muxtorov98/rabbitmq-universal:v2.1.8 --ignore-platform-reqs --no-scripts
 ```
 
 ---
