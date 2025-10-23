@@ -48,12 +48,65 @@ HANDLER_PATH='app/Handlers'
 ## 🧩 Umumiy Worker va Publisher misoli
 
 ### 🔧 Handler (har uchala framework uchun bir xil)
+
+# laravel Handler
+
 `app/Handlers/EmailHandler.php`:
 
 ```php
 <?php
 
 namespace App\Handlers;
+
+use RabbitMQQueue\Core\QueueHandlerInterface;
+use RabbitMQQueue\Core\QueueChannel;
+use RabbitMQQueue\Core\RabbitPublisher;
+
+#[QueueChannel('notification_queue')]
+class NotificationHandler implements QueueHandlerInterface
+{
+    public function handle(array $message): void
+    {
+        echo "📩 Notification received: " . json_encode($message, JSON_UNESCAPED_UNICODE) . PHP_EOL;
+    }
+}
+```
+
+
+## ⚙️ Laravel integratsiyasi
+
+### 🪄 1. Avtomatik yuklash
+Paket avtomatik tarzda `RabbitMQServiceProvider` ni yuklaydi, qo‘shimcha ro‘yxatdan o‘tkazish talab etilmaydi.
+
+### 🏃 2. Worker ishga tushirish
+```bash
+php artisan rabbit:worker
+
+docker compose exec php php artisan rabbit:worker
+```
+
+
+## ⚙️ Yii2 integratsiyasi
+
+### ⚙️ 1. `console/config/main.php` faylida controllerMap sozlovi
+
+```php
+'controllerMap' => [
+    'worker' => [
+        'class' => \RabbitMQQueue\Frameworks\Yii2\WorkerController::class,
+    ],
+],
+```
+
+
+# Yii2 Handler
+
+`console/Handlers/EmailHandler.php`;
+
+```php
+<?php
+
+namespace console\Handlers;
 
 use RabbitMQQueue\Core\QueueHandlerInterface;
 use RabbitMQQueue\Core\QueueChannel;
@@ -68,6 +121,58 @@ class EmailHandler implements QueueHandlerInterface
         echo "📩 Email received: " . json_encode($message, JSON_UNESCAPED_UNICODE) . PHP_EOL;
     }
 }
+```
+
+### 🏃 2. Worker ishga tushirish
+
+```bash
+php yii worker/start
+```
+
+---
+
+## ⚙️ Symfony integratsiyasi
+
+### ⚙️ 1. `services.yaml` konfiguratsiyasi
+
+`config/services.yaml` fayliga quyidagilarni qo‘shing:
+
+```yaml
+RabbitMQQueue\Frameworks\Symfony\:
+    resource: '../vendor/muxtorov98/rabbitmq-universal/src/Frameworks/Symfony/*'
+    tags: [ 'console.command' ]
+```
+
+---
+
+# symfony Handler
+
+`src/Handlers/LogHandler.php`;
+
+```php
+<?php
+
+namespace App\Handlers;
+
+use RabbitMQQueue\Core\QueueHandlerInterface;
+use RabbitMQQueue\Core\QueueChannel;
+use RabbitMQQueue\Core\RabbitPublisher;
+
+#[QueueChannel('log_queue')]
+class LogHandler implements QueueHandlerInterface
+{
+
+    public function handle(array $message): void
+    {
+        echo "📩 log received: " . json_encode($message, JSON_UNESCAPED_UNICODE) . PHP_EOL;
+    }
+}
+```
+
+### 🏃 2. Worker ishga tushirish
+
+```bash
+php bin/console rabbit:worker:start
 ```
 
 ---
@@ -86,57 +191,6 @@ $publisher->publish('email_queue', [
 
 ---
 
-## ⚙️ Laravel integratsiyasi
-
-### 🪄 1. Avtomatik yuklash
-Paket avtomatik tarzda `RabbitMQServiceProvider` ni yuklaydi, qo‘shimcha ro‘yxatdan o‘tkazish talab etilmaydi.
-
-### 🏃 2. Worker ishga tushirish
-```bash
-php artisan rabbit:worker
-
-docker compose exec php php artisan rabbit:worker
-```
-
----
-
-## ⚙️ Symfony integratsiyasi
-
-### ⚙️ 1. `services.yaml` konfiguratsiyasi
-
-`config/services.yaml` fayliga quyidagilarni qo‘shing:
-
-```yaml
-RabbitMQQueue\Frameworks\Symfony\:
-    resource: '../vendor/muxtorov98/rabbitmq-universal/src/Frameworks/Symfony/*'
-    tags: [ 'console.command' ]
-```
-
-### 🏃 2. Worker ishga tushirish
-
-```bash
-php bin/console rabbit:worker:start
-```
-
----
-
-## ⚙️ Yii2 integratsiyasi
-
-### ⚙️ 1. `console/config/main.php` faylida controllerMap sozlovi
-
-```php
-'controllerMap' => [
-    'worker' => [
-        'class' => \RabbitMQQueue\Frameworks\Yii2\WorkerController::class,
-    ],
-],
-```
-
-### 🏃 2. Worker ishga tushirish
-
-```bash
-php yii worker/start
-```
 # laravel
 
 - app/Console/Commands/RabbitPublishCommand.php
