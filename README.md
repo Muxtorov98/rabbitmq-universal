@@ -29,11 +29,11 @@ composer require muxtorov98/rabbitmq-universal:^3.0 --ignore-platform-reqs --no-
 Loyha ildizida `.env` fayl yarating:
 
 ```dotenv
-RABBITMQ_HOST=localhost
+RABBITMQ_HOST='localhost'
 RABBITMQ_PORT=5672
-RABBITMQ_USER=muxtorov
-RABBITMQ_PASS=5upris#1eWata2ped
-RABBITMQ_VHOST=/
+RABBITMQ_USER='muxtorov'
+RABBITMQ_PASS='5upris#1eWata2ped'
+RABBITMQ_VHOST='/'
 RABBITMQ_PREFETCH=10
 RABBITMQ_SSL=false
 
