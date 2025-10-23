@@ -236,42 +236,46 @@ class RabbitPublishCommand extends Command
 namespace App\Command;
 
 use RabbitMQQueue\Core\RabbitPublisher;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
+#[AsCommand(
+    name: 'rabbit:publish',
+    description: 'Publish a message to RabbitMQ queue'
+)]
 class RabbitPublishCommand extends Command
 {
-    protected static $defaultName = 'rabbit:publish';
-
-    protected function configure()
+    protected function configure(): void
     {
         $this
-            ->setDescription('Publish a message to RabbitMQ queue (from Symfony)')
             ->addArgument('queue', InputArgument::REQUIRED, 'Queue name')
-            ->addOption('data', null, InputOption::VALUE_OPTIONAL, 'JSON data string');
+            ->addArgument('data', InputArgument::REQUIRED, 'JSON encoded data');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $queue = $input->getArgument('queue');
-        $data = $input->getOption('data')
-            ? json_decode($input->getOption('data'), true)
-            : ['text'=>'Salom from Symfony'];
+        $jsonData = $input->getArgument('data');
+
+        $data = json_decode($jsonData, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $output->writeln('<error>❌ JSON format xato:</error> ' . json_last_error_msg());
+            return Command::FAILURE;
+        }
 
         $publisher = new RabbitPublisher();
         $publisher->publish($queue, $data);
 
-        $output->writeln("📩 Message published to queue '{$queue}' from Symfony: " . json_encode($data, JSON_UNESCAPED_UNICODE));
+        $output->writeln("✅ Xabar jo'natildi: <info>$queue</info>");
         return Command::SUCCESS;
     }
 }
-
 ```
 ```bash
-php bin/console rabbit:publish notification_queue --data='{"event":"user_registered","user_id":12345,"text":"Salom from Symfony"}'
+php bin/console rabbit:publish notification_queue '{"event":"user_registered","user_id":12345,"text":"Salom from Symfony"}'
 ```
 
 # yii 
