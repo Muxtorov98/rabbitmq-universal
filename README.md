@@ -60,14 +60,14 @@ use RabbitMQQueue\Core\RabbitPublisher;
 #[QueueChannel('email_queue')]
 class EmailHandler implements QueueHandlerInterface
 {
-    public function __construct(private RabbitPublisher $publisher) {}
 
     public function handle(array $message): void
     {
         echo "📩 Email received: " . json_encode($message, JSON_UNESCAPED_UNICODE) . PHP_EOL;
 
         // Test uchun javobni boshqa queue'ga yuborish
-        $this->publisher->publish('log_queue', [
+        $publisher = new RabbitPublisher();
+        $publisher->publish('log_queue', [
             'status' => 'processed',
             'to' => $message['to'] ?? 'unknown',
         ]);
